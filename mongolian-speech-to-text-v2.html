@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Монгол Дуу Таних v2</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f13;
+      color: #e8e6f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .container { width: 100%; max-width: 640px; }
+
+    .header { text-align: center; margin-bottom: 2rem; }
+    .header h1 { font-size: 26px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .header p { font-size: 13px; color: #555; }
+
+    /* Lang toggle */
+    .lang-toggle {
+      display: flex;
+      background: #16161e;
+      border: 1px solid #2a2a38;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
+      gap: 4px;
+    }
+    .lang-btn {
+      flex: 1;
+      padding: 0.5rem;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      background: transparent;
+      color: #555;
+      transition: all 0.2s;
+    }
+    .lang-btn.active {
+      background: #185FA5;
+      color: #E6F1FB;
+    }
+    .lang-btn.active.mn { background: #533ab7; color: #e9e6ff; }
+
+    /* Mic */
+    .mic-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .mic-ring {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      background: #16161e;
+      border: 2px solid #2a2a35;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .mic-ring.listening {
+      border-color: #e24b4a;
+      animation: ripple 1.5s ease-out infinite;
+    }
+    .mic-ring.listening.mn-mode { border-color: #7f77dd; animation: ripple-mn 1.5s ease-out infinite; }
+    @keyframes ripple {
+      0%   { box-shadow: 0 0 0 0 rgba(226,75,74,0.3); }
+      100% { box-shadow: 0 0 0 22px rgba(226,75,74,0); }
+    }
+    @keyframes ripple-mn {
+      0%   { box-shadow: 0 0 0 0 rgba(127,119,221,0.35); }
+      100% { box-shadow: 0 0 0 22px rgba(127,119,221,0); }
+    }
+    .mic-icon { width: 32px; height: 32px; fill: #666; transition: fill 0.3s; }
+    .mic-ring.listening .mic-icon { fill: #e24b4a; }
+    .mic-ring.listening.mn-mode .mic-icon { fill: #a89ee8; }
+
+    .btn-record {
+      padding: 0.6rem 2rem;
+      font-size: 15px; font-weight: 500;
+      border-radius: 99px;
+      border: none; cursor: pointer;
+      transition: all 0.2s;
+      background: #185FA5; color: #E6F1FB;
+    }
+    .btn-record:hover { background: #0C447C; }
+    .btn-record.listening { background: #A32D2D; color: #FCEBEB; }
+    .btn-record.listening:hover { background: #791F1F; }
+    .btn-record.mn-mode { background: #533ab7; color: #e9e6ff; }
+    .btn-record.mn-mode:hover { background: #3c2a8a; }
+    .btn-record.listening.mn-mode { background: #A32D2D; color: #FCEBEB; }
+
+    .status-bar {
+      display: flex; align-items: center; gap: 8px;
+      justify-content: center;
+      font-size: 13px; color: #555;
+      margin-top: 0.6rem; height: 20px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #333; transition: background 0.3s; }
+    .dot.green { background: #1D9E75; }
+    .dot.red   { background: #e24b4a; animation: blink 1s infinite; }
+    .dot.purple { background: #7f77dd; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+    /* Transcript */
+    .transcript-box {
+      background: #16161e;
+      border: 1px solid #2a2a38;
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      min-height: 150px;
+      font-size: 16px; line-height: 1.8;
+      color: #dddaf0;
+      margin-bottom: 0.5rem;
+      word-break: break-word;
+      white-space: pre-wrap;
+      transition: border-color 0.3s;
+    }
+    .transcript-box.active-en { border-color: #1a3a5a; }
+    .transcript-box.active-mn { border-color: #2e2560; }
+    .placeholder { color: #333; font-size: 14px; font-style: italic; }
+    .interim-text { color: #6655aa; font-style: italic; }
+
+    /* Lang badge on text */
+    .lang-badge {
+      display: inline-block;
+      font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 4px;
+      margin-right: 4px; vertical-align: middle;
+      letter-spacing: 0.05em;
+    }
+    .badge-en { background: #0c2a40; color: #5aabf0; }
+    .badge-mn { background: #1e1640; color: #a89ee8; }
+
+    /* Actions */
+    .actions { display: flex; gap: 8px; margin-bottom: 0.4rem; }
+    .btn-sm {
+      flex: 1; padding: 0.5rem 0.4rem;
+      font-size: 13px;
+      border: 1px solid #2a2a38;
+      background: #16161e; color: #666;
+      border-radius: 8px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { background: #1f1f2a; color: #bbb; border-color: #3a3a50; }
+
+    .copy-feedback {
+      font-size: 12px; color: #1D9E75;
+      text-align: center; height: 18px;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Info box */
+    .info-box {
+      background: #12121a;
+      border: 1px solid #222230;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+    .info-box strong { color: #888; }
+
+    /* History */
+    .history-section { margin-top: 1.5rem; display: none; }
+    .history-label {
+      font-size: 11px; font-weight: 600;
+      color: #333; text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 0.6rem;
+    }
+    .history-item {
+      background: #16161e;
+      border: 1px solid #1e1e2a;
+      border-radius: 10px;
+      padding: 0.55rem 0.85rem;
+      margin-bottom: 5px;
+      display: flex; justify-content: space-between;
+      align-items: flex-start; gap: 10px;
+      font-size: 13px;
+    }
+    .history-text { flex: 1; color: #999; line-height: 1.5; }
+    .history-time { font-size: 11px; color: #333; white-space: nowrap; padding-top: 2px; }
+
+    .warning {
+      background: #1a1208;
+      border: 1px solid #4a3010;
+      color: #b07830;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      margin-top: 1rem;
+      display: none; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>Монгол + Англи Дуу Таних</h1>
+    <p>Хэл сонгоод ярина уу — текст болгоно</p>
+  </div>
+
+  <!-- Language selector -->
+  <div class="lang-toggle">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">🇺🇸 English (en-US)</button>
+    <button class="lang-btn mn" id="btn-mn" onclick="setLang('mn')">🇲🇳 Монгол (mn-MN)</button>
+    <button class="lang-btn" id="btn-auto" onclick="setLang('auto')">⚡ Автомат</button>
+  </div>
+
+  <div class="info-box" id="info-box">
+    <strong>Англи хэл</strong> сонгогдсон байна. Chrome болон Edge дээр сайн ажиллана.<br>
+    Монгол сонговол браузер оролдох боловч таних чанар хязгаарлагдмал байж болно.
+  </div>
+
+  <!-- Mic -->
+  <div class="mic-section">
+    <div class="mic-ring" id="mic-ring" onclick="toggleRecord()">
+      <svg class="mic-icon" viewBox="0 0 24 24">
+        <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-1 18.93V22h2v-2.07A8 8 0 0 0 20 12h-2a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.93z"/>
+      </svg>
+    </div>
+    <button class="btn-record" id="btn-rec" onclick="toggleRecord()">
+      <span id="btn-label">● &nbsp;Бичлэг эхлүүлэх</span>
+    </button>
+    <div class="status-bar">
+      <div class="dot" id="dot"></div>
+      <span id="status-txt">Бэлэн байна</span>
+    </div>
+  </div>
+
+  <div class="transcript-box" id="transcript">
+    <span class="placeholder">Хэл сонгоод товчлуур дарж ярина уу...</span>
+  </div>
+
+  <div class="copy-feedback" id="copy-msg"></div>
+
+  <div class="actions">
+    <button class="btn-sm" onclick="copyText()">Хуулах</button>
+    <button class="btn-sm" onclick="clearAll()">Цэвэрлэх</button>
+    <button class="btn-sm" onclick="downloadText()">Татаж авах (.txt)</button>
+  </div>
+
+  <div class="warning" id="no-support">
+    ⚠ Таны браузер Web Speech API дэмжихгүй байна. Chrome эсвэл Edge ашиглана уу.
+  </div>
+
+  <div class="history-section" id="history-section">
+    <div class="history-label">Өмнөх бичлэгүүд</div>
+    <div id="history-list"></div>
+  </div>
+
+</div>
+
+<script>
+  let recognition = null;
+  let isListening = false;
+  let finalText = '';
+  let segments = []; // {text, lang}
+  let history = [];
+  let currentLang = 'en';
+  let autoIndex = 0;
+  const autoLangs = ['mn-MN', 'en-US'];
+
+  const infoTexts = {
+    en:   '<strong>Англи хэл</strong> сонгогдсон байна. Chrome болон Edge дээр сайн ажиллана.',
+    mn:   '<strong>Монгол хэл</strong> сонгогдсон байна. Браузер таних чанар хязгаарлагдмал байж болно. Дуугаа тод ярина уу.',
+    auto: '<strong>Автомат горим</strong>: Монгол болон Англи хоёрыг ээлжлэн оролдоно. Таних чанар бага зэрэг удаан байж болно.'
+  };
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    if (lang === 'en')   document.getElementById('btn-en').classList.add('active');
+    if (lang === 'mn')   document.getElementById('btn-mn').classList.add('active');
+    if (lang === 'auto') document.getElementById('btn-auto').classList.add('active');
+    document.getElementById('info-box').innerHTML = infoTexts[lang] || '';
+
+    const isMn = lang === 'mn';
+    const btn = document.getElementById('btn-rec');
+    const ring = document.getElementById('mic-ring');
+    if (isMn) { btn.classList.add('mn-mode'); ring.classList.add('mn-mode'); }
+    else       { btn.classList.remove('mn-mode'); ring.classList.remove('mn-mode'); }
+
+    if (isListening) { stopListening(); }
+  }
+
+  function getLangCode() {
+    if (currentLang === 'en') return 'en-US';
+    if (currentLang === 'mn') return 'mn-MN';
+    return autoLangs[autoIndex % autoLangs.length];
+  }
+
+  function getLangLabel() {
+    if (currentLang === 'en') return 'en';
+    if (currentLang === 'mn') return 'mn';
+    return autoLangs[autoIndex % autoLangs.length] === 'mn-MN' ? 'mn' : 'en';
+  }
+
+  function initRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      document.getElementById('no-support').style.display = 'block';
+      document.getElementById('btn-rec').disabled = true;
+      return null;
+    }
+    const r = new SR();
+    r.lang = getLangCode();
+    r.continuous = true;
+    r.interimResults = true;
+    r.maxAlternatives = 1;
+
+    r.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          segments.push({ text: t, lang: getLangLabel() });
+          finalText += t + ' ';
+        } else {
+          interim += t;
+        }
+      }
+      renderTranscript(interim);
+    };
+
+    r.onerror = (e) => {
+      if (e.error === 'no-speech') {
+        if (currentLang === 'auto') {
+          autoIndex++;
+          restartWithNewLang();
+        }
+        return;
+      }
+      if (e.error === 'language-not-supported') {
+        setStatus('Хэл дэмжигдэхгүй байна — Англи руу шилжиж байна', '');
+        currentLang = 'en';
+        setLang('en');
+        return;
+      }
+      setStatus('Алдаа: ' + e.error, '');
+      stopListening();
+    };
+
+    r.onend = () => {
+      if (isListening) {
+        if (currentLang === 'auto') autoIndex++;
+        restartWithNewLang();
+      }
+    };
+
+    return r;
+  }
+
+  function restartWithNewLang() {
+    if (!isListening) return;
+    try {
+      recognition = initRecognition();
+      if (recognition) recognition.start();
+    } catch(e) {}
+  }
+
+  function renderTranscript(interim) {
+    const box = document.getElementById('transcript');
+    box.innerHTML = '';
+    if (segments.length) {
+      segments.forEach(seg => {
+        const badge = document.createElement('span');
+        badge.className = 'lang-badge ' + (seg.lang === 'mn' ? 'badge-mn' : 'badge-en');
+        badge.textContent = seg.lang === 'mn' ? 'МН' : 'EN';
+        box.appendChild(badge);
+        box.appendChild(document.createTextNode(seg.text + ' '));
+      });
+    }
+    if (interim) {
+      const i = document.createElement('span');
+      i.className = 'interim-text';
+      i.textContent = interim;
+      box.appendChild(i);
+    }
+    if (!segments.length && !interim) {
+      box.innerHTML = '<span class="placeholder">Хэл сонгоод товчлуур дарж ярина уу...</span>';
+    }
+  }
+
+  function setStatus(txt, state) {
+    document.getElementById('status-txt').textContent = txt;
+    document.getElementById('dot').className = 'dot ' + (state || '');
+  }
+
+  function toggleRecord() {
+    if (isListening) { stopListening(); return; }
+    recognition = initRecognition();
+    if (!recognition) return;
+    startListening();
+  }
+
+  function startListening() {
+    isListening = true;
+    try { recognition.start(); } catch(e) {}
+    const isMn = currentLang === 'mn';
+    const isAuto = currentLang === 'auto';
+    setStatus('Дуу хүлээн авч байна...', isMn ? 'purple' : 'red');
+    const btn = document.getElementById('btn-rec');
+    btn.className = 'btn-record listening' + (isMn ? ' mn-mode' : '');
+    document.getElementById('btn-label').textContent = '■  Зогсоох';
+    document.getElementById('mic-ring').classList.add('listening');
+    if (isMn) document.getElementById('mic-ring').classList.add('mn-mode');
+    const activeClass = isMn ? 'active-mn' : 'active-en';
+    document.getElementById('transcript').classList.add(activeClass);
+  }
+
+  function stopListening() {
+    isListening = false;
+    try { recognition.stop(); } catch(e) {}
+    setStatus('Бэлэн байна', 'green');
+    const btn = document.getElementById('btn-rec');
+    const isMn = currentLang === 'mn';
+    btn.className = 'btn-record' + (isMn ? ' mn-mode' : '');
+    document.getElementById('btn-label').textContent = '●  Бичлэг эхлүүлэх';
+    const ring = document.getElementById('mic-ring');
+    ring.classList.remove('listening', 'mn-mode');
+    document.getElementById('transcript').classList.remove('active-en', 'active-mn');
+    if (finalText.trim()) addHistory(finalText.trim());
+  }
+
+  function addHistory(text) {
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+    history.unshift({ text, time });
+    if (history.length > 5) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const sec = document.getElementById('history-section');
+    const list = document.getElementById('history-list');
+    if (!history.length) { sec.style.display = 'none'; return; }
+    sec.style.display = 'block';
+    list.innerHTML = history.map(h =>
+      `<div class="history-item">
+        <span class="history-text">${escHtml(h.text)}</span>
+        <span class="history-time">${h.time}</span>
+      </div>`
+    ).join('');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function copyText() {
+    const txt = finalText.trim();
+    if (!txt) return;
+    navigator.clipboard.writeText(txt).then(() => showMsg('Хуулагдлаа!')).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); showMsg('Хуулагдлаа!');
+    });
+  }
+
+  function clearAll() {
+    finalText = ''; segments = [];
+    renderTranscript('');
+    setStatus('Цэвэрлэгдлаа', '');
+  }
+
+  function downloadText() {
+    const txt = finalText.trim();
+    if (!txt) return;
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'speech-' + Date.now() + '.txt';
+    a.click(); URL.revokeObjectURL(url);
+  }
+
+  function showMsg(msg) {
+    const el = document.getElementById('copy-msg');
+    el.textContent = msg;
+    setTimeout(() => { el.textContent = ''; }, 2000);
+  }
+</script>
+</body>
+</html>
